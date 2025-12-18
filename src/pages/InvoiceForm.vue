@@ -127,7 +127,7 @@ async function addItem() {
   try {
     await invoicesStore.addItem(currentInvoice.value.id, {
       product_id: newItem.product_id,
-      quantity: parseFloat(newItem.quantity),
+      quantity: parseInt(newItem.quantity),
       rate: parseFloat(newItem.rate)
     })
     // Reset form
@@ -152,7 +152,11 @@ async function removeItem(itemId) {
 }
 
 async function calculateGst() {
-  if (!invoiceItems.value.length) {
+  console.log('Current invoice:', currentInvoice.value)
+  console.log('Invoice items:', invoiceItems.value)
+  console.log('Invoice items length:', invoiceItems.value?.length)
+
+  if (!invoiceItems.value || invoiceItems.value.length === 0) {
     toast.error('Please add at least one item')
     return
   }
@@ -370,8 +374,8 @@ function getProductGstRate(productId) {
                   v-model="newItem.quantity"
                   label="Quantity"
                   type="number"
-                  step="0.01"
-                  min="0"
+                  step="1"
+                  min="1"
                 />
               </div>
               <div class="w-40">
@@ -389,10 +393,10 @@ function getProductGstRate(productId) {
                   {{ selectedProduct ? `${selectedProduct.gst_rate}%` : '-' }}
                 </div>
               </div>
-              <button 
+              <button
                 class="btn-primary"
                 @click="addItem"
-                :disabled="saving || !newItem.product_id"
+                :disabled="saving || !newItem.product_id || !newItem.quantity || newItem.quantity <= 0 || !newItem.rate || newItem.rate <= 0"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
