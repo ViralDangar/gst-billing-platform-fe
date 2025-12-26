@@ -317,6 +317,16 @@
 
   /* Print styles */
   @media print {
+    @page {
+      size: A4;
+      margin: 10mm;
+    }
+
+    body {
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
     .no-print {
       display: none !important;
     }
@@ -327,6 +337,24 @@
 
     .print-break-after {
       break-after: page;
+    }
+
+    .invoice-preview {
+      @apply border-0 shadow-none max-w-full;
+      padding: 0 !important;
+    }
+
+    .invoice-table {
+      page-break-inside: avoid;
+    }
+
+    .invoice-table th,
+    .invoice-table td {
+      @apply border border-black;
+    }
+
+    .invoice-header {
+      @apply border-b-2 border-black;
     }
   }
 }

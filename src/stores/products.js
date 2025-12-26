@@ -15,7 +15,9 @@ export const useProductsStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      products.value = await productsApi.getProducts(params)
+      const response = await productsApi.getProducts(params)
+      // API returns paginated response with { items, total, page, page_size, total_pages }
+      products.value = response.items || []
     } catch (err) {
       error.value = err.message
       products.value = []

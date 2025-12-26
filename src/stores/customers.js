@@ -23,7 +23,9 @@ export const useCustomersStore = defineStore('customers', () => {
     loading.value = true
     error.value = null
     try {
-      customers.value = await customersApi.getCustomers(params)
+      const response = await customersApi.getCustomers(params)
+      // API returns paginated response with { items, total, page, page_size, total_pages }
+      customers.value = response.items || []
     } catch (err) {
       error.value = err.message
       customers.value = []
