@@ -24,6 +24,7 @@ const showFinalizeConfirm = ref(false)
 const form = reactive({
   customer_id: '',
   invoice_date: getTodayDate(),
+  po_number: '',
   notes: ''
 })
 
@@ -82,6 +83,7 @@ onMounted(async () => {
       if (currentInvoice.value) {
         form.customer_id = currentInvoice.value.customer_id
         form.invoice_date = formatDateForInput(currentInvoice.value.invoice_date)
+        form.po_number = currentInvoice.value.po_number || ''
         form.notes = currentInvoice.value.notes || ''
       }
     }
@@ -107,6 +109,7 @@ async function createInvoice() {
     const invoice = await invoicesStore.createInvoice({
       customer_id: form.customer_id,
       invoice_date: form.invoice_date,
+      po_number: form.po_number || null,
       notes: form.notes
     })
     router.replace({ name: 'invoice-edit', params: { id: invoice.id } })
@@ -284,7 +287,7 @@ function getProductGstRate(productId) {
               required
               :disabled="isEditMode || !isEditable"
             />
-            
+
             <FormInput
               v-model="form.invoice_date"
               label="Invoice Date"
@@ -299,6 +302,15 @@ function getProductGstRate(productId) {
                 {{ currentInvoice.invoice_number || 'Will be generated' }}
               </div>
             </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-5 mt-5">
+            <FormInput
+              v-model="form.po_number"
+              label="PO Number"
+              placeholder="Enter purchase order number (optional)"
+              :disabled="!isEditable"
+            />
           </div>
 
           <!-- Create button for new invoices -->

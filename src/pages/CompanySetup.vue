@@ -20,8 +20,8 @@ const form = reactive({
   pincode: '',
   gstin: '',
   pan: '',
-  email: '',
-  phone: '',
+  email_id: '',
+  mobile_number: '',
   bank_name: '',
   bank_branch: '',
   account_name: '',
@@ -174,14 +174,14 @@ async function saveCompany() {
               />
               
               <FormInput
-                v-model="form.email"
+                v-model="form.email_id"
                 label="Email"
                 type="email"
                 placeholder="company@example.com"
               />
               
               <FormInput
-                v-model="form.phone"
+                v-model="form.mobile_number"
                 label="Phone"
                 placeholder="9876543210"
                 maxlength="10"
