@@ -204,9 +204,9 @@ async function toggleStatus() {
 </script>
 
 <template>
-  <div>
-    <PageHeader 
-      title="Customer Master" 
+  <div class="fade-in">
+    <PageHeader
+      title="Customer Master"
       subtitle="Manage your customers and their details"
     >
       <template #actions>
@@ -219,10 +219,10 @@ async function toggleStatus() {
       </template>
     </PageHeader>
 
-    <div class="card">
-      <!-- Fixed height table container for desktop -->
-      <div class="overflow-hidden">
-        <div class="max-h-[calc(100vh-280px)] overflow-y-auto">
+    <div class="card slide-up animation-delay-100">
+      <!-- Fixed height table container -->
+      <div class="h-[calc(100vh-320px)] overflow-hidden flex flex-col">
+        <div class="flex-1 overflow-y-auto">
           <DataTable
             :columns="columns"
             :data="customersStore.customers"
@@ -403,3 +403,39 @@ async function toggleStatus() {
     />
   </div>
 </template>
+
+<style scoped>
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animation-delay-100 {
+  animation-delay: 0.1s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
