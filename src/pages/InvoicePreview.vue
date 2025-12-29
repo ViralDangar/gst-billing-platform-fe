@@ -22,8 +22,11 @@ const items = computed(() => preview.value?.items || [])
 const taxSummary = computed(() => preview.value?.tax_summary)
 
 const isIntraState = computed(() => {
-  if (!seller.value || !buyer.value) return true
-  return seller.value.state === buyer.value.state
+  // Determine if intra-state based on tax types in the response
+  // If CGST/SGST exists, it's intra-state. If IGST exists, it's inter-state.
+  const taxes = preview.value?.tax_summary
+  if (!taxes) return true
+  return (taxes.cgst_amount > 0 || taxes.sgst_amount > 0)
 })
 
 onMounted(async () => {
@@ -162,18 +165,20 @@ function printInvoice() {
           <div class="text-right">
             <div class="inline-block text-left">
               <table class="text-sm">
-                <tr>
-                  <td class="font-medium pr-4 py-1">Invoice No:</td>
-                  <td class="font-mono font-bold text-primary-700">{{ invoice?.invoice_number }}</td>
-                </tr>
-                <tr>
-                  <td class="font-medium pr-4 py-1">Date:</td>
-                  <td>{{ formatDate(invoice?.invoice_date) }}</td>
-                </tr>
-                <tr>
-                  <td class="font-medium pr-4 py-1">Status:</td>
-                  <td><StatusBadge :status="invoice?.status" type="invoice" /></td>
-                </tr>
+                <tbody>
+                  <tr>
+                    <td class="font-medium pr-4 py-1">Invoice No:</td>
+                    <td class="font-mono font-bold text-primary-700">{{ invoice?.invoice_number }}</td>
+                  </tr>
+                  <tr>
+                    <td class="font-medium pr-4 py-1">Date:</td>
+                    <td>{{ formatDate(invoice?.invoice_date) }}</td>
+                  </tr>
+                  <tr>
+                    <td class="font-medium pr-4 py-1">Status:</td>
+                    <td><StatusBadge :status="invoice?.status" type="invoice" /></td>
+                  </tr>
+                </tbody>
               </table>
             </div>
           </div>
@@ -279,32 +284,34 @@ function printInvoice() {
           <!-- Summary Box -->
           <div>
             <table class="w-full text-sm">
-              <tr>
-                <td class="py-1">Taxable Amount</td>
-                <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.taxable_amount) }}</td>
-              </tr>
-              <template v-if="isIntraState">
+              <tbody>
                 <tr>
-                  <td class="py-1">CGST</td>
-                  <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.cgst_amount) }}</td>
+                  <td class="py-1">Taxable Amount</td>
+                  <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.taxable_amount) }}</td>
                 </tr>
-                <tr>
-                  <td class="py-1">SGST</td>
-                  <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.sgst_amount) }}</td>
+                <template v-if="isIntraState">
+                  <tr>
+                    <td class="py-1">CGST</td>
+                    <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.cgst_amount) }}</td>
+                  </tr>
+                  <tr>
+                    <td class="py-1">SGST</td>
+                    <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.sgst_amount) }}</td>
+                  </tr>
+                </template>
+                <template v-else>
+                  <tr>
+                    <td class="py-1">IGST</td>
+                    <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.igst_amount) }}</td>
+                  </tr>
+                </template>
+                <tr class="border-t-2 border-gray-800">
+                  <td class="py-2 font-bold text-base">Grand Total</td>
+                  <td class="text-right currency font-bold text-base text-primary-700 py-2">
+                    {{ formatCurrency(invoice?.total_amount) }}
+                  </td>
                 </tr>
-              </template>
-              <template v-else>
-                <tr>
-                  <td class="py-1">IGST</td>
-                  <td class="text-right currency py-1">{{ formatCurrency(taxSummary?.igst_amount) }}</td>
-                </tr>
-              </template>
-              <tr class="border-t-2 border-gray-800">
-                <td class="py-2 font-bold text-base">Grand Total</td>
-                <td class="text-right currency font-bold text-base text-primary-700 py-2">
-                  {{ formatCurrency(invoice?.total_amount) }}
-                </td>
-              </tr>
+              </tbody>
             </table>
           </div>
         </div>

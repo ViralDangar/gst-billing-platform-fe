@@ -24,6 +24,7 @@ const showFinalizeConfirm = ref(false)
 const form = reactive({
   customer_id: '',
   invoice_date: getTodayDate(),
+  po_number: '',
   notes: ''
 })
 
@@ -60,6 +61,15 @@ const selectedProduct = computed(() => {
 const currentInvoice = computed(() => invoicesStore.currentInvoice)
 const invoiceItems = computed(() => currentInvoice.value?.items || [])
 
+// Store tax calculation result temporarily
+const calculatedTax = ref(null)
+
+const isTaxCalculated = computed(() => {
+  // Check if tax has been calculated (either stored in calculatedTax or in invoice)
+  return calculatedTax.value !== null ||
+         (currentInvoice.value?.tax_total !== null && currentInvoice.value?.tax_total !== undefined)
+})
+
 onMounted(async () => {
   loading.value = true
   try {
@@ -73,6 +83,7 @@ onMounted(async () => {
       if (currentInvoice.value) {
         form.customer_id = currentInvoice.value.customer_id
         form.invoice_date = formatDateForInput(currentInvoice.value.invoice_date)
+        form.po_number = currentInvoice.value.po_number || ''
         form.notes = currentInvoice.value.notes || ''
       }
     }
@@ -98,6 +109,7 @@ async function createInvoice() {
     const invoice = await invoicesStore.createInvoice({
       customer_id: form.customer_id,
       invoice_date: form.invoice_date,
+      po_number: form.po_number || null,
       notes: form.notes
     })
     router.replace({ name: 'invoice-edit', params: { id: invoice.id } })
@@ -127,9 +139,11 @@ async function addItem() {
   try {
     await invoicesStore.addItem(currentInvoice.value.id, {
       product_id: newItem.product_id,
-      quantity: parseFloat(newItem.quantity),
+      quantity: parseInt(newItem.quantity),
       rate: parseFloat(newItem.rate)
     })
+    // Clear calculated tax when items change
+    calculatedTax.value = null
     // Reset form
     newItem.product_id = ''
     newItem.quantity = 1
@@ -145,6 +159,8 @@ async function addItem() {
 async function removeItem(itemId) {
   try {
     await invoicesStore.removeItem(currentInvoice.value.id, itemId)
+    // Clear calculated tax when items change
+    calculatedTax.value = null
     toast.success('Item removed')
   } catch (err) {
     // Error handled by API interceptor
@@ -152,14 +168,17 @@ async function removeItem(itemId) {
 }
 
 async function calculateGst() {
-  if (!invoiceItems.value.length) {
+  if (!invoiceItems.value || invoiceItems.value.length === 0) {
     toast.error('Please add at least one item')
     return
   }
 
   calculating.value = true
   try {
-    await invoicesStore.calculateTax(currentInvoice.value.id)
+    const result = await invoicesStore.calculateTax(currentInvoice.value.id)
+    // Store the tax calculation result temporarily
+    calculatedTax.value = result
+    console.log('Tax calculation result:', result)
     toast.success('GST calculated successfully')
   } catch (err) {
     // Error handled by API interceptor
@@ -173,7 +192,7 @@ function confirmFinalize() {
     toast.error('Please add at least one item')
     return
   }
-  if (!currentInvoice.value?.tax_calculated) {
+  if (!isTaxCalculated.value) {
     toast.error('Please calculate GST first')
     return
   }
@@ -268,7 +287,7 @@ function getProductGstRate(productId) {
               required
               :disabled="isEditMode || !isEditable"
             />
-            
+
             <FormInput
               v-model="form.invoice_date"
               label="Invoice Date"
@@ -283,6 +302,15 @@ function getProductGstRate(productId) {
                 {{ currentInvoice.invoice_number || 'Will be generated' }}
               </div>
             </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-5 mt-5">
+            <FormInput
+              v-model="form.po_number"
+              label="PO Number"
+              placeholder="Enter purchase order number (optional)"
+              :disabled="!isEditable"
+            />
           </div>
 
           <!-- Create button for new invoices -->
@@ -370,8 +398,8 @@ function getProductGstRate(productId) {
                   v-model="newItem.quantity"
                   label="Quantity"
                   type="number"
-                  step="0.01"
-                  min="0"
+                  step="1"
+                  min="1"
                 />
               </div>
               <div class="w-40">
@@ -389,10 +417,10 @@ function getProductGstRate(productId) {
                   {{ selectedProduct ? `${selectedProduct.gst_rate}%` : '-' }}
                 </div>
               </div>
-              <button 
+              <button
                 class="btn-primary"
                 @click="addItem"
-                :disabled="saving || !newItem.product_id"
+                :disabled="saving || !newItem.product_id || !newItem.quantity || newItem.quantity <= 0 || !newItem.rate || newItem.rate <= 0"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -415,24 +443,20 @@ function getProductGstRate(productId) {
             <div class="space-y-3">
               <div class="flex justify-between text-sm">
                 <span class="text-gray-600">Taxable Amount</span>
-                <span class="currency">{{ formatCurrency(currentInvoice.taxable_amount || 0) }}</span>
+                <span class="currency">{{ formatCurrency(calculatedTax?.taxable_total || currentInvoice.taxable_total || 0) }}</span>
               </div>
-              <div v-if="currentInvoice.cgst_amount" class="flex justify-between text-sm">
-                <span class="text-gray-600">CGST</span>
-                <span class="currency">{{ formatCurrency(currentInvoice.cgst_amount) }}</span>
+              <div v-if="calculatedTax?.tax_total || currentInvoice.tax_total" class="flex justify-between text-sm">
+                <span class="text-gray-600">Tax Total</span>
+                <span class="currency">{{ formatCurrency(calculatedTax?.tax_total || currentInvoice.tax_total) }}</span>
               </div>
-              <div v-if="currentInvoice.sgst_amount" class="flex justify-between text-sm">
-                <span class="text-gray-600">SGST</span>
-                <span class="currency">{{ formatCurrency(currentInvoice.sgst_amount) }}</span>
-              </div>
-              <div v-if="currentInvoice.igst_amount" class="flex justify-between text-sm">
-                <span class="text-gray-600">IGST</span>
-                <span class="currency">{{ formatCurrency(currentInvoice.igst_amount) }}</span>
+              <div v-if="calculatedTax?.round_off || currentInvoice.round_off" class="flex justify-between text-sm">
+                <span class="text-gray-600">Round Off</span>
+                <span class="currency">{{ formatCurrency(calculatedTax?.round_off || currentInvoice.round_off) }}</span>
               </div>
               <div class="flex justify-between pt-3 border-t border-gray-200">
                 <span class="font-semibold text-gray-900">Grand Total</span>
                 <span class="currency font-bold text-lg text-primary-700">
-                  {{ formatCurrency(currentInvoice.total_amount || 0) }}
+                  {{ formatCurrency(calculatedTax?.grand_total || currentInvoice.grand_total || 0) }}
                 </span>
               </div>
             </div>
@@ -467,11 +491,11 @@ function getProductGstRate(productId) {
                   Preview
                 </button>
 
-                <button 
+                <button
                   v-if="isEditable"
                   class="btn-success"
                   @click="confirmFinalize"
-                  :disabled="!currentInvoice.tax_calculated"
+                  :disabled="!isTaxCalculated"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -479,8 +503,8 @@ function getProductGstRate(productId) {
                   Finalize Invoice
                 </button>
               </div>
-              
-              <p v-if="isEditable && !currentInvoice.tax_calculated" class="text-xs text-gray-500">
+
+              <p v-if="isEditable && !isTaxCalculated" class="text-xs text-gray-500">
                 Calculate GST before finalizing the invoice
               </p>
             </div>

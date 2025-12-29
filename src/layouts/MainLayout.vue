@@ -1,8 +1,14 @@
 <script setup>
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores'
 
 const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+
+const sidebarOpen = ref(false)
+const showUserMenu = ref(false)
 
 const navItems = [
   {
@@ -32,12 +38,44 @@ const currentTitle = computed(() => route.meta.title || 'Dashboard')
 function isActive(path) {
   return route.path === path || route.path.startsWith(path + '/')
 }
+
+async function handleLogout() {
+  showUserMenu.value = false
+  await authStore.logout()
+  router.push({ name: 'login' })
+}
+
+function closeSidebar() {
+  sidebarOpen.value = false
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-gray-50 flex">
+    <!-- Mobile Menu Button -->
+    <button
+      @click="sidebarOpen = !sidebarOpen"
+      class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-white rounded-lg shadow-lg hover:bg-gray-50 transition-colors"
+    >
+      <svg class="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+
+    <!-- Mobile Overlay -->
+    <div
+      v-if="sidebarOpen"
+      @click="sidebarOpen = false"
+      class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity"
+    ></div>
+
     <!-- Sidebar -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-20">
+    <aside
+      :class="[
+        'w-64 bg-white border-r border-gray-200 flex flex-col fixed h-full z-40 transition-transform duration-300',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      ]"
+    >
       <!-- Logo -->
       <div class="h-16 flex items-center px-6 border-b border-gray-100">
         <div class="flex items-center gap-3">
@@ -61,7 +99,7 @@ function isActive(path) {
           v-slot="{ navigate }"
         >
           <a
-            @click="navigate"
+            @click="navigate(); closeSidebar()"
             :class="[
               'nav-item cursor-pointer',
               isActive(item.to) ? 'nav-item-active' : 'nav-item-inactive'
@@ -83,23 +121,70 @@ function isActive(path) {
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 ml-64">
+    <main class="flex-1 lg:ml-64 w-full">
       <!-- Top Bar -->
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 sticky top-0 z-10">
+      <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 sticky top-0 z-10">
         <div class="flex items-center gap-4">
+          <div class="lg:hidden w-12"></div>
           <h2 class="text-sm font-medium text-gray-600">
             {{ currentTitle }}
           </h2>
         </div>
-        <div class="flex items-center gap-4">
-          <span class="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+        <div class="flex items-center gap-3 sm:gap-4">
+          <!-- FY Badge - Hidden on small screens -->
+          <span class="hidden sm:inline-flex text-xs text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
             FY 2024-25
           </span>
+
+          <!-- User Menu -->
+          <div class="relative">
+            <button
+              @click="showUserMenu = !showUserMenu"
+              class="flex items-center gap-2 px-2 sm:px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <div class="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
+                <span class="text-white text-sm font-semibold">
+                  {{ authStore.user?.full_name?.charAt(0).toUpperCase() || 'U' }}
+                </span>
+              </div>
+              <div class="text-left hidden sm:block">
+                <p class="text-sm font-medium text-gray-900">{{ authStore.user?.full_name || 'User' }}</p>
+                <p class="text-xs text-gray-500">{{ authStore.user?.email }}</p>
+              </div>
+              <svg class="w-4 h-4 text-gray-400 hidden sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <!-- Dropdown -->
+            <Transition name="fade-scale">
+              <div
+                v-if="showUserMenu"
+                @click.stop
+                v-click-outside="() => showUserMenu = false"
+                class="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-elevated border border-gray-100 py-2 z-50"
+              >
+                <div class="px-4 py-3 border-b border-gray-100">
+                  <p class="text-sm font-medium text-gray-900">{{ authStore.user?.full_name }}</p>
+                  <p class="text-xs text-gray-500 truncate">{{ authStore.user?.email }}</p>
+                </div>
+                <button
+                  @click="handleLogout"
+                  class="w-full px-4 py-2 text-left text-sm text-danger-600 hover:bg-danger-50 transition-colors flex items-center gap-2"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                  </svg>
+                  Sign Out
+                </button>
+              </div>
+            </Transition>
+          </div>
         </div>
       </header>
 
       <!-- Page Content -->
-      <div class="p-8">
+      <div class="p-4 sm:p-6 lg:p-8">
         <router-view v-slot="{ Component, route: currentRoute }">
           <transition name="fade" mode="out-in">
             <component :is="Component" :key="currentRoute.path" />
@@ -119,5 +204,23 @@ function isActive(path) {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+
+/* User menu dropdown animation */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.2s ease;
+}
+
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+}
+
+.fade-scale-enter-to,
+.fade-scale-leave-from {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 </style>

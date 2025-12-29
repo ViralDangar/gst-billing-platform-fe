@@ -1,3 +1,4 @@
+export { useAuthStore } from './auth'
 export { useToastStore } from './toast'
 export { useCompanyStore } from './company'
 export { useProductsStore } from './products'

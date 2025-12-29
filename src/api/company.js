@@ -5,7 +5,7 @@ export const companyApi = {
    * Get company details
    */
   async getCompany() {
-    const response = await apiClient.get('/identity/company')
+    const response = await apiClient.get('/identity/company/with-gstin')
     return response.data
   },
 

@@ -6,8 +6,14 @@ export const useProductsStore = defineStore('products', () => {
   const products = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    total: 0,
+    page: 1,
+    page_size: 10,
+    total_pages: 0
+  })
 
-  const activeProducts = computed(() => 
+  const activeProducts = computed(() =>
     products.value.filter(p => p.is_active)
   )
 
@@ -15,10 +21,19 @@ export const useProductsStore = defineStore('products', () => {
     loading.value = true
     error.value = null
     try {
-      products.value = await productsApi.getProducts(params)
+      const response = await productsApi.getProducts(params)
+      // API returns paginated response with { items, total, page, page_size, total_pages }
+      products.value = response.items || []
+      pagination.value = {
+        total: response.total || 0,
+        page: response.page || 1,
+        page_size: response.page_size || 10,
+        total_pages: response.total_pages || 0
+      }
     } catch (err) {
       error.value = err.message
       products.value = []
+      pagination.value = { total: 0, page: 1, page_size: 10, total_pages: 0 }
     } finally {
       loading.value = false
     }
@@ -84,6 +99,7 @@ export const useProductsStore = defineStore('products', () => {
     activeProducts,
     loading,
     error,
+    pagination,
     fetchProducts,
     createProduct,
     updateProduct,

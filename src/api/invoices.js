@@ -5,7 +5,7 @@ export const invoicesApi = {
    * Get all invoices
    */
   async getInvoices(params = {}) {
-    const response = await apiClient.get('/billing/invoices', { params })
+    const response = await apiClient.get('/billing/invoices/', { params })
     return response.data
   },
 
@@ -21,7 +21,7 @@ export const invoicesApi = {
    * Create new invoice
    */
   async createInvoice(data) {
-    const response = await apiClient.post('/billing/invoices', data)
+    const response = await apiClient.post('/billing/invoices/', data)
     return response.data
   },
 
@@ -88,7 +88,10 @@ export const invoicesApi = {
     const response = await apiClient.get(`/documents/invoices/${id}/pdf`, {
       responseType: 'blob'
     })
-    return response.data
+    return {
+      blob: response.data,
+      headers: response.headers
+    }
   }
 }
 
