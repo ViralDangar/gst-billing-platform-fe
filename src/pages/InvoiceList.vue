@@ -75,9 +75,9 @@ async function downloadPdf(invoice) {
 </script>
 
 <template>
-  <div>
-    <PageHeader 
-      title="Invoices" 
+  <div class="fade-in">
+    <PageHeader
+      title="Invoices"
       subtitle="View and manage all your invoices"
     >
       <template #actions>
@@ -90,10 +90,10 @@ async function downloadPdf(invoice) {
       </template>
     </PageHeader>
 
-    <div class="card">
-      <!-- Fixed height table container for desktop -->
-      <div class="overflow-hidden">
-        <div class="max-h-[calc(100vh-280px)] overflow-y-auto">
+    <div class="card slide-up animation-delay-100">
+      <!-- Fixed height table container -->
+      <div class="h-[calc(100vh-320px)] overflow-hidden flex flex-col">
+        <div class="flex-1 overflow-y-auto">
           <DataTable
             :columns="columns"
             :data="invoicesStore.invoices"
@@ -175,3 +175,39 @@ async function downloadPdf(invoice) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.fade-in {
+  animation: fadeIn 0.3s ease-in;
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+.animation-delay-100 {
+  animation-delay: 0.1s;
+  opacity: 0;
+  animation-fill-mode: forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
