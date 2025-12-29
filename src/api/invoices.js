@@ -88,7 +88,10 @@ export const invoicesApi = {
     const response = await apiClient.get(`/documents/invoices/${id}/pdf`, {
       responseType: 'blob'
     })
-    return response.data
+    return {
+      blob: response.data,
+      headers: response.headers
+    }
   }
 }
 

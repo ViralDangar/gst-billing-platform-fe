@@ -6,6 +6,12 @@ export const useCustomersStore = defineStore('customers', () => {
   const customers = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    total: 0,
+    page: 1,
+    page_size: 10,
+    total_pages: 0
+  })
 
   const activeCustomers = computed(() => 
     customers.value.filter(c => c.is_active)
@@ -26,9 +32,16 @@ export const useCustomersStore = defineStore('customers', () => {
       const response = await customersApi.getCustomers(params)
       // API returns paginated response with { items, total, page, page_size, total_pages }
       customers.value = response.items || []
+      pagination.value = {
+        total: response.total || 0,
+        page: response.page || 1,
+        page_size: response.page_size || 10,
+        total_pages: response.total_pages || 0
+      }
     } catch (err) {
       error.value = err.message
       customers.value = []
+      pagination.value = { total: 0, page: 1, page_size: 10, total_pages: 0 }
     } finally {
       loading.value = false
     }
@@ -96,6 +109,7 @@ export const useCustomersStore = defineStore('customers', () => {
     b2cCustomers,
     loading,
     error,
+    pagination,
     fetchCustomers,
     createCustomer,
     updateCustomer,

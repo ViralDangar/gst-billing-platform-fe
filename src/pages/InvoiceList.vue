@@ -1,13 +1,16 @@
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useInvoicesStore, useToastStore } from '@/stores'
-import { PageHeader, DataTable, StatusBadge } from '@/components'
+import { PageHeader, DataTable, StatusBadge, Pagination } from '@/components'
 import { formatCurrency, formatDate } from '@/utils'
 
 const router = useRouter()
 const invoicesStore = useInvoicesStore()
 const toast = useToastStore()
+
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const columns = [
   { key: 'invoice_number', label: 'Invoice No.' },
@@ -19,8 +22,26 @@ const columns = [
 ]
 
 onMounted(() => {
-  invoicesStore.fetchInvoices()
+  loadInvoices()
 })
+
+function loadInvoices() {
+  invoicesStore.fetchInvoices({
+    page: currentPage.value,
+    page_size: pageSize.value
+  })
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  loadInvoices()
+}
+
+function handlePageSizeChange(newPageSize) {
+  pageSize.value = newPageSize
+  currentPage.value = 1 // Reset to first page when page size changes
+  loadInvoices()
+}
 
 function createInvoice() {
   router.push({ name: 'invoice-create' })
@@ -70,13 +91,16 @@ async function downloadPdf(invoice) {
     </PageHeader>
 
     <div class="card">
-      <DataTable
-        :columns="columns"
-        :data="invoicesStore.invoices"
-        :loading="invoicesStore.loading"
-        empty-message="No invoices found. Create your first invoice to get started."
-        @row-click="viewInvoice"
-      >
+      <!-- Fixed height table container for desktop -->
+      <div class="overflow-hidden">
+        <div class="max-h-[calc(100vh-280px)] overflow-y-auto">
+          <DataTable
+            :columns="columns"
+            :data="invoicesStore.invoices"
+            :loading="invoicesStore.loading"
+            empty-message="No invoices found. Create your first invoice to get started."
+            @row-click="viewInvoice"
+          >
         <template #cell-invoice_number="{ value }">
           <span class="font-mono font-medium text-primary-700">{{ value }}</span>
         </template>
@@ -130,12 +154,24 @@ async function downloadPdf(invoice) {
           </div>
         </template>
 
-        <template #empty-action>
-          <button class="btn-primary btn-sm mt-4" @click="createInvoice">
-            Create Invoice
-          </button>
-        </template>
-      </DataTable>
+          <template #empty-action>
+            <button class="btn-primary btn-sm mt-4" @click="createInvoice">
+              Create Invoice
+            </button>
+          </template>
+        </DataTable>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <Pagination
+        :current-page="currentPage"
+        :total-pages="invoicesStore.pagination.total_pages"
+        :total-items="invoicesStore.pagination.total"
+        :page-size="pageSize"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+      />
     </div>
   </div>
 </template>

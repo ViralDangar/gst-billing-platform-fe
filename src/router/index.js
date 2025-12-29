@@ -1,9 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import MainLayout from '@/layouts/MainLayout.vue'
+import { useAuthStore } from '@/stores'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // Auth routes (public) - MUST be first to avoid matching issues
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('@/pages/Login.vue'),
+      meta: { title: 'Login', public: true, requiresAuth: false }
+    },
+    {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/pages/Register.vue'),
+      meta: { title: 'Register', public: true, requiresAuth: false }
+    },
+    // Protected routes
     {
       path: '/',
       component: MainLayout,
@@ -60,11 +75,41 @@ const router = createRouter({
   ]
 })
 
+// Initialize auth store once on app startup
+let authStoreInitialized = false
+
 router.beforeEach((to, from, next) => {
-  document.title = to.meta.title 
-    ? `${to.meta.title} | GST Billing` 
+  // Set page title
+  document.title = to.meta.title
+    ? `${to.meta.title} | GST Billing`
     : 'GST Billing'
-  next()
+
+  const authStore = useAuthStore()
+
+  // Initialize auth store only once
+  if (!authStoreInitialized) {
+    authStore.init()
+    authStoreInitialized = true
+  }
+
+  // Public routes (login, register)
+  const isPublicRoute = to.meta.requiresAuth === false
+
+  if (isPublicRoute) {
+    // If already authenticated, redirect to dashboard
+    if (authStore.isAuthenticated) {
+      next({ name: 'invoices' })
+    } else {
+      next()
+    }
+  } else {
+    // Protected route - require authentication
+    if (authStore.isAuthenticated) {
+      next()
+    } else {
+      next({ name: 'login', query: { redirect: to.fullPath } })
+    }
+  }
 })
 
 export default router

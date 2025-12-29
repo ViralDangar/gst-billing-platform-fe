@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useCustomersStore, useToastStore } from '@/stores'
-import { PageHeader, DataTable, Modal, FormInput, FormSelect, StatusBadge, ConfirmDialog } from '@/components'
+import { PageHeader, DataTable, Modal, FormInput, FormSelect, StatusBadge, ConfirmDialog, Pagination } from '@/components'
 import { INDIAN_STATES, isValidGstin } from '@/utils'
 import { required, gstin, validateForm } from '@/utils/validators'
 
@@ -13,6 +13,9 @@ const showConfirm = ref(false)
 const editingCustomer = ref(null)
 const customerToToggle = ref(null)
 const saving = ref(false)
+
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const form = reactive({
   name: '',
@@ -58,8 +61,26 @@ const validationRules = computed(() => ({
 }))
 
 onMounted(() => {
-  customersStore.fetchCustomers()
+  loadCustomers()
 })
+
+function loadCustomers() {
+  customersStore.fetchCustomers({
+    page: currentPage.value,
+    page_size: pageSize.value
+  })
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  loadCustomers()
+}
+
+function handlePageSizeChange(newPageSize) {
+  pageSize.value = newPageSize
+  currentPage.value = 1 // Reset to first page when page size changes
+  loadCustomers()
+}
 
 function openAddModal() {
   editingCustomer.value = null
@@ -199,12 +220,15 @@ async function toggleStatus() {
     </PageHeader>
 
     <div class="card">
-      <DataTable
-        :columns="columns"
-        :data="customersStore.customers"
-        :loading="customersStore.loading"
-        empty-message="No customers found. Add your first customer to get started."
-      >
+      <!-- Fixed height table container for desktop -->
+      <div class="overflow-hidden">
+        <div class="max-h-[calc(100vh-280px)] overflow-y-auto">
+          <DataTable
+            :columns="columns"
+            :data="customersStore.customers"
+            :loading="customersStore.loading"
+            empty-message="No customers found. Add your first customer to get started."
+          >
         <template #cell-gstin="{ value }">
           <span class="font-mono text-sm">{{ value || '-' }}</span>
         </template>
@@ -248,12 +272,24 @@ async function toggleStatus() {
           </div>
         </template>
 
-        <template #empty-action>
-          <button class="btn-primary btn-sm mt-4" @click="openAddModal">
-            Add Customer
-          </button>
-        </template>
-      </DataTable>
+          <template #empty-action>
+            <button class="btn-primary btn-sm mt-4" @click="openAddModal">
+              Add Customer
+            </button>
+          </template>
+        </DataTable>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <Pagination
+        :current-page="currentPage"
+        :total-pages="customersStore.pagination.total_pages"
+        :total-items="customersStore.pagination.total"
+        :page-size="pageSize"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+      />
     </div>
 
     <!-- Add/Edit Modal -->

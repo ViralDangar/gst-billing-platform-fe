@@ -8,6 +8,12 @@ export const useInvoicesStore = defineStore('invoices', () => {
   const invoicePreview = ref(null)
   const loading = ref(false)
   const error = ref(null)
+  const pagination = ref({
+    total: 0,
+    page: 1,
+    page_size: 10,
+    total_pages: 0
+  })
 
   const draftInvoices = computed(() => 
     invoices.value.filter(i => i.status === 'DRAFT')
@@ -28,9 +34,16 @@ export const useInvoicesStore = defineStore('invoices', () => {
       const response = await invoicesApi.getInvoices(params)
       // API returns paginated response with { items, total, page, page_size, total_pages }
       invoices.value = response.items || []
+      pagination.value = {
+        total: response.total || 0,
+        page: response.page || 1,
+        page_size: response.page_size || 10,
+        total_pages: response.total_pages || 0
+      }
     } catch (err) {
       error.value = err.message
       invoices.value = []
+      pagination.value = { total: 0, page: 1, page_size: 10, total_pages: 0 }
     } finally {
       loading.value = false
     }
@@ -244,11 +257,30 @@ export const useInvoicesStore = defineStore('invoices', () => {
 
   async function downloadPdf(id) {
     try {
-      const blob = await invoicesApi.downloadPdf(id)
+      const { blob, headers } = await invoicesApi.downloadPdf(id)
+
+      // Extract filename from Content-Disposition header
+      let filename = `invoice-${id}.pdf` // fallback
+      const contentDisposition = headers['content-disposition']
+      console.log({contentDisposition})
+      if (contentDisposition) {
+        // Parse filename from header: "inline; filename=GST/2025-26/000008_2025-12-29_FCB ULKA ADVERTISING Private Limited.pdf"
+        const filenameMatch = contentDisposition.match(/filename=([^;]+)/)
+        if (filenameMatch && filenameMatch[1]) {
+          // Remove quotes if present and trim whitespace
+          filename = filenameMatch[1].replace(/['"]/g, '').trim()
+
+          // Replace forward slashes with underscores for file system compatibility
+          // This converts "GST/2025-26/000008_..." to "GST_2025-26_000008_..."
+          filename = filename.replace(/\//g, '_')
+        }
+      }
+
+      // Create download link
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `invoice-${id}.pdf`
+      link.download = filename
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -273,6 +305,7 @@ export const useInvoicesStore = defineStore('invoices', () => {
     isCurrentEditable,
     loading,
     error,
+    pagination,
     fetchInvoices,
     fetchInvoice,
     createInvoice,

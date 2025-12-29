@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useProductsStore, useToastStore } from '@/stores'
-import { PageHeader, DataTable, Modal, FormInput, FormSelect, StatusBadge, ConfirmDialog } from '@/components'
+import { PageHeader, DataTable, Modal, FormInput, FormSelect, StatusBadge, ConfirmDialog, Pagination } from '@/components'
 import { GST_RATES, UNIT_OPTIONS, formatCurrency } from '@/utils'
 import { required, hsnSac, positiveNumber, validateForm } from '@/utils/validators'
 
@@ -13,6 +13,9 @@ const showConfirm = ref(false)
 const editingProduct = ref(null)
 const productToToggle = ref(null)
 const saving = ref(false)
+
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 const form = reactive({
   name: '',
@@ -43,8 +46,26 @@ const validationRules = {
 }
 
 onMounted(() => {
-  productsStore.fetchProducts()
+  loadProducts()
 })
+
+function loadProducts() {
+  productsStore.fetchProducts({
+    page: currentPage.value,
+    page_size: pageSize.value
+  })
+}
+
+function handlePageChange(page) {
+  currentPage.value = page
+  loadProducts()
+}
+
+function handlePageSizeChange(newPageSize) {
+  pageSize.value = newPageSize
+  currentPage.value = 1 // Reset to first page when page size changes
+  loadProducts()
+}
 
 function openAddModal() {
   editingProduct.value = null
@@ -155,12 +176,15 @@ async function toggleStatus() {
     </PageHeader>
 
     <div class="card">
-      <DataTable
-        :columns="columns"
-        :data="productsStore.products"
-        :loading="productsStore.loading"
-        empty-message="No products found. Add your first product to get started."
-      >
+      <!-- Fixed height table container for desktop -->
+      <div class="overflow-hidden">
+        <div class="max-h-[calc(100vh-280px)] overflow-y-auto">
+          <DataTable
+            :columns="columns"
+            :data="productsStore.products"
+            :loading="productsStore.loading"
+            empty-message="No products found. Add your first product to get started."
+          >
         <template #cell-gst_rate="{ value }">
           <span class="font-mono text-sm">{{ value }}%</span>
         </template>
@@ -200,12 +224,24 @@ async function toggleStatus() {
           </div>
         </template>
 
-        <template #empty-action>
-          <button class="btn-primary btn-sm mt-4" @click="openAddModal">
-            Add Product
-          </button>
-        </template>
-      </DataTable>
+          <template #empty-action>
+            <button class="btn-primary btn-sm mt-4" @click="openAddModal">
+              Add Product
+            </button>
+          </template>
+        </DataTable>
+        </div>
+      </div>
+
+      <!-- Pagination -->
+      <Pagination
+        :current-page="currentPage"
+        :total-pages="productsStore.pagination.total_pages"
+        :total-items="productsStore.pagination.total"
+        :page-size="pageSize"
+        @page-change="handlePageChange"
+        @page-size-change="handlePageSizeChange"
+      />
     </div>
 
     <!-- Add/Edit Modal -->
